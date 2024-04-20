@@ -1,4 +1,5 @@
 import streamlit as st
+import sys
 import threading
 import time
 from langchain_core.runnables import RunnableConfig
@@ -16,6 +17,7 @@ from config import config as os_config, DEBUG, logger
 from utils import MyQueue, Empty
 
 # indicate if we should render it in the UI
+PLAYER_INDEX_UI_ERROR = -100
 PLAYER_INDEX_UI_NOT_RENDER = -99
 PLAYER_INDEX_UI_RENDER = -98
 GAMES_PATH = "games"
@@ -304,14 +306,24 @@ def select_players_num():
         )
         # run as a thread
         def _thread_func():
-            result = g.invoke(init_data, config)
-            state = GameState.parse_obj(result)
+            try:
+                result = g.invoke(init_data, config)
+                state = GameState.parse_obj(result)
+            except Exception as e:
+                # notify the UI to show the error from the queue
+                logger.exception(e)
+                state =  GameState.parse_obj(init_data)
+                exc_info = sys.exc_info()
+                st_q.put({"player_index": PLAYER_INDEX_UI_ERROR, "task": "ERROR", "task_output": {"error": str(e), "exc_info": str(exc_info)}, "state": state})
+                # notify the UI to end the game
+                st_q.put({"player_index": PLAYER_INDEX_UI_RENDER, "task": "END", "task_output": {}, "state": state})
+                return
             st_q.put({"player_index": PLAYER_INDEX_UI_RENDER, "task": "END", "task_output": {}, "state": state})
             # Notify the UI to save the game?
             st_q.put({"player_index": PLAYER_INDEX_UI_NOT_RENDER, "task": "END_SAVE", "task_output": {}, "state": state})
 
         # TODO: how to end the thread gracefully?
-        thread = threading.Thread(target=_thread_func)
+        thread = threading.Thread(target=_thread_func, daemon=True)    # daemon=True ?
         thread.start()
         app_state.set_graph(g, thread)
         
@@ -379,7 +391,7 @@ def save_game(app_id, q,):
     # append a game
     file_path = os.path.join(GAMES_PATH, "games.json")
     games = load_games()
-    name = f"{final_state.get('innocent_word')} - {final_state.get('undercover_word')}"
+    name = f"{final_state.get('innocent_word')} - {final_state.get('undercover_word')} ({final_state.get("players_num")} players)"
     games.insert(0, {"app_id": app_id, "name": name, "players_num": final_state.get("players_num"), "created_at": time.ctime(time.time())})
     with open(file_path, "w+", encoding="utf-8") as f:
         jstr = json.dumps(games, indent=2)
@@ -536,6 +548,11 @@ def render_messages():
             st.session_state["games"] = load_games()
             # force rerun
             st.rerun()
+        # error from graph
+        if player_index == PLAYER_INDEX_UI_ERROR and task == "ERROR":
+            st.error(f"Error: {task_output.get('error')}\n\n{task_output.get('exc_info')}")
+            st.markdown("**Got an error! Please restart the game.**")
+            break
         else:
             text, json_obj = format_message(player_index, task, task_output, state)
             render_message(text, json_obj)
