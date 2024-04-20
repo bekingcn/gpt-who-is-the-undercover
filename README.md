@@ -8,8 +8,17 @@ In the "Who is the Undercover" game, a group of n players (where n is greater th
 
 ## Multi-Agent Application
 
-This multi-agent application utilizes [langchain](https://python.langchain.com/docs/get_started/introduction) and [langgraph](https://python.langchain.com/docs/langgraph/) to enable intelligent communication and decision-making among the players.
-Together, these technologies enable the players to communicate effectively, make informed decisions, and uncover the identity of the undercover player.
+This multi-agent application utilizes [langchain](https://python.langchain.com/docs/get_started/introduction) and [langgraph](https://python.langchain.com/docs/langgraph/) to enable multi AI players (or you as the human player) to play the game together.
+
+The `langchain` library provides the ability to create and manage language-based models, while the `langgraph` library enables the creation and execution of state graphs, which are used to orchestrate the flow of information and actions within the game.
+
+The `langchain` models used in this application are created using the `langchain-openai` adapter, which enables interaction with the OpenAI GPT models.
+
+The `langgraph` state graphs used in this application are defined in the `agents` module, and they orchestrate the gameplay between the players.
+
+Each player's turn is represented by a node in the state graph, where the player's agent runs and executes its logic. The results of the player's actions are propagated to the next node in the graph.
+
+The `KickoffAgent` and `RouterAgent` are the two key agents in this application. The `KickoffAgent` is responsible for starting the game, introducing each player (`AIPlayer` or `HumanPlayer`) and their words, and distributing the roles. The `RouterAgent` is responsible for controlling the flow of the game, coordinating the actions of the players, and managing the state of the game.
 
 ## Installation
 
