@@ -2,8 +2,9 @@ import random, json
 from langchain.adapters.openai import convert_openai_messages
 from langchain_openai import ChatOpenAI
 
-from .prompts import PROMPT_KICKOFF
+from .prompts import PROMPT_KICKOFF, PROMPT_KICKOFF_RULES
 from .base import TASK_NAME_KICKOFF
+from .gameconfig import GLOBAL_GAME_CONFIG as game_config, update_word_pair_examples
 
 model_name = "gpt-3.5-turbo"
 
@@ -56,7 +57,31 @@ class KickoffAgent:
         return words
     
     def generate(self):
-        lc_messages = convert_openai_messages(PROMPT_KICKOFF) # (prompt)
+        # replace the user content here, with the updated word pair examples
+        user_prompt = PROMPT_KICKOFF_RULES.format(word_pair_examples=update_word_pair_examples(game_config.word_pair_examples))
+        kickoff_prompt = PROMPT_KICKOFF.copy()
+        kickoff_prompt[1]["content"] = user_prompt
+        lc_messages = convert_openai_messages(kickoff_prompt)
         response = ChatOpenAI(model=model_name, max_retries=1).invoke(lc_messages).content
         response = response.strip("```").strip("json").strip("\"'")
         return json.loads(response)
+    
+## ----
+## test
+
+def test_generate():
+    game_config.word_pair_examples = [
+        ["Piano", "Accordion"],
+        ["Butterfly", "Moth"],
+        ["Books", "Magazines"],
+        ["Beach", "Desert"],
+        ["Ice Cream", "Sorbet"],
+        ["The Eiffel Tower", "The Great Wall of China"],
+    ]
+    
+    kickoff = KickoffAgent()
+    result = kickoff.generate()
+    print(result)
+    
+if __name__ == "__main__":
+    test_generate()

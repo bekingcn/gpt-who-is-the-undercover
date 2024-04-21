@@ -2,7 +2,7 @@ import os
 import logging
 import dotenv
 
-DEBUG = True
+DEBUG = False
 app_name = "gpt-undercover"
 logger = logging.getLogger(app_name)
 logger.setLevel(logging.DEBUG if DEBUG else logging.INFO)

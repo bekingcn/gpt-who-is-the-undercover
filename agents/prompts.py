@@ -31,22 +31,14 @@ You should consider the following suggestions:
 - Ensure that the innocent words are distinct but not too obvious, while the undercover words are slightly more specific or unique.
 
 Here are the sample word/phrase pairs for the game:
-Ice Cream (innocent) and Sorbet (undercover)
-The Eiffel Tower (innocent) and The Great Wall of China (undercover)
-Books (innocent) and Magazines (undercover)
-Beach (innocent) and Desert (undercover)
-Guitar (innocent) and Banjo (undercover)
-Mountain (innocent) and Volcano (undercover)
-Sunflower (innocent) and Rose (undercover)
-Bicycle (innocent) and Unicycle (undercover)
-Lemonade (innocent) and Mojito (undercover)
+{word_pair_examples}
 
-By following these samples and providing extra engaging word pairs.
+By following these samples and providing one extra engaging word pair.
 Here is the format of your return:
-{
+{{
     "innocent_word": "innocent word",
     "undercover_word": "undercover word"
-}
+}}
 Please return nothing but the JSON.
 """
 
@@ -152,3 +144,25 @@ PROMPT_PLAYER_VOTING = [
     }
 ]
 
+## ---------------
+## Tests
+
+def test_kickoff_prompt():
+    p = PROMPT_KICKOFF
+    print(p)
+    
+    print("---")
+    print(PROMPT_KICKOFF_RULES.format(word_pair_examples="""
+Ice Cream (innocent) and Sorbet (undercover)
+The Eiffel Tower (innocent) and The Great Wall of China (undercover)
+Books (innocent) and Magazines (undercover)
+Beach (innocent) and Desert (undercover)
+Guitar (innocent) and Banjo (undercover)
+Mountain (innocent) and Volcano (undercover)
+Sunflower (innocent) and Rose (undercover)
+Bicycle (innocent) and Unicycle (undercover)
+Lemonade (innocent) and Mojito (undercover)
+"""))
+    
+if __name__ == "__main__":
+    test_kickoff_prompt()

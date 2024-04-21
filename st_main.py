@@ -212,14 +212,12 @@ def _format_task_start_task(task_output, state):
 # handle user input
 def on_human_input():
     app_state: AppState = st.session_state["app_state"]
-    print("QUEUE in on_human_input: ", app_state.input_queue)
     if "statement_input" in st.session_state  and st.session_state["statement_input"]:
         # clear the key
         value = st.session_state.pop("statement_input")
         # TODO: to align the output from user call, like:
         # st.session_state["input_queue"].put({"statement": value})
         app_state.input_queue.put(value)
-        print("put statement in on_human_input: ", value)
         return
     if "vote_input" in st.session_state and st.session_state["vote_input"]:
         # clear the key
@@ -227,7 +225,6 @@ def on_human_input():
         value = value.index # int(value)
         # should be a tuple :<
         app_state.input_queue.put(tuple([value, {"vote": value}]))
-        print("put vote in on_human_input: ", value)
         return
     raise NotImplementedError("Invalid input")
 
@@ -288,6 +285,16 @@ def select_players_num():
         game_config.reorder_palyers = reorder_players_every
         game_config.player_agents_connect_with = player_agents_connect_with
         game_config.human_input_timeout = timeout_for_human
+        # TODO: remove it
+        history_words = [
+            ["Piano", "Accordion"],
+            ["Butterfly", "Moth"],
+            ["Books", "Magazines"],
+            ["Beach", "Desert"],
+            ["Ice Cream", "Sorbet"],
+            ["The Eiffel Tower", "The Great Wall of China"],
+        ] + st.session_state["history_words"]
+        game_config.word_pair_examples = history_words
      
         app_state: AppState = st.session_state["app_state"]
         # NOTE: have to restart it, we support a new app_id for each run
@@ -353,7 +360,6 @@ def redo_message(m):
     """
     import json
     nm = {k: v if k != "state" or v is None else v.dict() for k, v in m.items()}
-    # print(nm)
     return nm
     
 def save_game(app_id, q,):
@@ -380,7 +386,6 @@ def save_game(app_id, q,):
         os.makedirs(path)
     # remove unnecessary messages
     messages = [redo_message(m) for m in q.queue if m["player_index"] != PLAYER_INDEX_UI_NOT_RENDER]
-    print(messages)
     jstr = json.dumps(messages, indent=2)
     with open(file_path, "w+", encoding="utf-8") as f:
         f.write(jstr)
@@ -392,7 +397,13 @@ def save_game(app_id, q,):
     file_path = os.path.join(GAMES_PATH, "games.json")
     games = load_games()
     name = f"{final_state.get('innocent_word')} - {final_state.get('undercover_word')} ({final_state.get("players_num")} players)"
-    games.insert(0, {"app_id": app_id, "name": name, "players_num": final_state.get("players_num"), "created_at": time.ctime(time.time())})
+    games.insert(0, {
+        "app_id": app_id, 
+        "name": name, 
+        "players_num": final_state.get("players_num"), 
+        "created_at": time.ctime(time.time()),
+        "words": [final_state.get("innocent_word"), final_state.get("undercover_word")]
+        })
     with open(file_path, "w+", encoding="utf-8") as f:
         jstr = json.dumps(games, indent=2)
         f.write(jstr)
@@ -433,6 +444,16 @@ def load_games():
         # return 20 more recent
         return games[:20]
 
+def load_history_words(games: list[dict]):
+    # get the history words and update the 
+    word_pairs = []
+    for g in games:
+        words = g.get("words")
+        if words and words not in word_pairs:
+            word_pairs.append(words)
+        if len(word_pairs) >= 10:
+            break
+    return word_pairs
 
 # define a class to hold all status and internal states
 class AppState:
@@ -496,7 +517,7 @@ class AppState:
             app_state.message_queue.put(message)
         app_state.end = False
         app_state.is_history = True
-        return app_state
+        return app_state    
 
 def render_messages():
     """
@@ -546,6 +567,7 @@ def render_messages():
             message["task"] = "END_SAVED"
             # reload into the session state
             st.session_state["games"] = load_games()
+            st.session_state["history_words"] = load_history_words(st.session_state["games"])
             # force rerun
             st.rerun()
         # error from graph
@@ -567,6 +589,7 @@ def main():
         st.session_state["app_state"] = AppState()
     if "games" not in st.session_state:
         st.session_state["games"] = load_games()
+        st.session_state["history_words"] = load_history_words(st.session_state["games"])
         
     with st.sidebar:
         st.title("Settings")
@@ -581,40 +604,10 @@ def main():
         )
 
         st.checkbox(
-            "Play game as a human player)",
+            "Play game as the human player",
             value=False,
             key="with_human_player",
             disabled=False
-        )
-
-        st.checkbox(
-            "Use the history of all rounds",
-            value=False,
-            key="with_rounds_history"
-        )
-
-        st.selectbox(
-            "How to connect the players",
-            ["router", "chain"],
-            index=0,
-            # on_change=select_players_num,
-            key="player_agents_connect_with"
-        )
-
-        st.selectbox(
-            "Reorder players on every",
-            [None, "round", "task"],
-            index=0,
-            # on_change=select_players_num,
-            key="reorder_players_every"
-        )
-
-        st.selectbox(
-            "Reorder the players with",
-            ["shuffle", "shift"],
-            index=0,
-            # on_change=select_players_num,
-            key="order_players_by"
         )
 
         st.selectbox(
@@ -624,6 +617,38 @@ def main():
             # on_change=select_players_num,
             key="timeout_for_human"
         )
+
+        with st.expander("Advanced settings", expanded=False):
+
+            st.selectbox(
+                "How to connect the players",
+                ["router", "chain"],
+                index=0,
+                # on_change=select_players_num,
+                key="player_agents_connect_with"
+            )
+
+            st.selectbox(
+                "Reorder players on every",
+                [None, "round", "task"],
+                index=0,
+                # on_change=select_players_num,
+                key="reorder_players_every"
+            )
+
+            st.selectbox(
+                "Reorder the players with",
+                ["shuffle", "shift"],
+                index=0,
+                # on_change=select_players_num,
+                key="order_players_by"
+            )
+
+            st.checkbox(
+                "Use the history of all rounds",
+                value=False,
+                key="with_rounds_history"
+            )
 
         st.divider()
 

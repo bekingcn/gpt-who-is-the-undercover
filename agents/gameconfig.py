@@ -1,4 +1,3 @@
-
 REORDER_METHOD_SHUFFLE = "shuffle"
 REORDER_METHOD_SHIFT = "shift"
 
@@ -8,6 +7,23 @@ REORDER_PLAYERS_EVERY_TASK = "task"
 
 PLAYER_AGENTS_CONNECT_WITH_CHAIN = "chain"
 PLAYER_AGENTS_CONNECT_WITH_ROUTER = "router"
+
+_init_word_pair_examples = [
+    ["Ice Cream", "Sorbet"],
+    ["The Eiffel Tower", "The Great Wall of China"],
+    ["Books", "Magazines"],
+    ["Sunflower", "Rose"],
+    ["Beach", "Desert"],
+    ["Lemonade", "Lemonade"],
+]
+_max_word_pair_examples = 10
+def update_word_pair_examples(new_pairs=[]):
+    # at most 10 examples (or excluding 10 history word pairs)
+    if len(new_pairs) < _max_word_pair_examples:
+        pairs = new_pairs + _init_word_pair_examples[:_max_word_pair_examples-len(new_pairs)]
+    else:
+        pairs = new_pairs[:_max_word_pair_examples]
+    return "\n".join([f"{wp[0]} (innocent) and {wp[1]} (undercover)" for wp in pairs])
 
 # TODO: should we add this as parameter for calls?
 # for now, we support it as global config
@@ -22,7 +38,9 @@ class GameConfig:
         reorder_players=REORDER_PLAYERS_NOTHING,
         order_players_by=REORDER_METHOD_SHUFFLE,
         player_agents_connect_with=PLAYER_AGENTS_CONNECT_WITH_ROUTER,   # chain or router
-        human_input_timeout = 60
+        human_input_timeout = 60,
+        # actually we fill the used words here
+        word_pair_examples: list[list[str]] = []
     ):
         self.players_num = players_num
         self.with_humans = with_humans
@@ -35,6 +53,7 @@ class GameConfig:
         self.order_players_by = order_players_by   # or shift
         self.player_agents_connect_with = player_agents_connect_with
         self.human_input_timeout = human_input_timeout
+        self.word_pair_examples = word_pair_examples
 
     
     @property
@@ -48,5 +67,6 @@ GLOBAL_GAME_CONFIG = GameConfig(
     reorder_players=REORDER_PLAYERS_NOTHING,
     order_players_by=REORDER_METHOD_SHUFFLE,
     player_agents_connect_with=PLAYER_AGENTS_CONNECT_WITH_ROUTER,
-    human_input_timeout = 60
+    human_input_timeout = 60,
+    word_pair_examples = []
 )
