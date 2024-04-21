@@ -54,7 +54,6 @@ def render_message(msg, json_obj=None, debug_mode=False, expanded=False):
     if msg:
         st.markdown(msg)
     if json_obj and debug_mode:
-        print("Render Debug: ", json_obj)
         st.json(json_obj, expanded=expanded)
 
 
