@@ -21,8 +21,7 @@ PLAYER_INDEX_UI_ERROR = -100
 PLAYER_INDEX_UI_NOT_RENDER = -99
 PLAYER_INDEX_UI_RENDER = -98
 GAMES_PATH = "games"
-
-os_config()
+GITHUB_URL = "https://github.com/bekingcn/gpt-who-is-the-undercover"
 
 def st_callback(st_q):
     def _callback_wrapper(player_index, task, task_output, state):
@@ -51,14 +50,15 @@ def format_players_order(players, order=None):
     return text
 
 # is it a debug msg?
-def render_message(msg, json_obj=None, debug=True, expanded=False, json_title=None):
+def render_message(msg, json_obj=None, debug_mode=False, expanded=False):
     if msg:
         st.markdown(msg)
-    if json_obj and (not debug or DEBUG == debug):
+    if json_obj and debug_mode:
+        print("Render Debug: ", json_obj)
         st.json(json_obj, expanded=expanded)
 
 
-def format_message(player_index, task, task_output, state):
+def format_message(player_index, task, task_output, state, debug_mode):
     """Format the message to display for a given player and task."""
     logger.debug(f"MSG_RENDER: {player_index}, {task}, {task_output}")
 
@@ -137,7 +137,6 @@ def _format_vote_task(player_desc, task_output):
 
 def _format_kickoff_task(task, task_output, state):
     if task == TASK_NAME_KICKOFF:
-        hints = _format_kickoff_hints(task_output)
         players_with_order = format_players_order(state.players, order=task_output.get('order'))
         text = f"""\
 #### Kickoff Game with {len(state.players)} Players
@@ -145,23 +144,7 @@ def _format_kickoff_task(task, task_output, state):
 {players_with_order}
 
 """
-        if DEBUG:
-            text = text + f"""\
-#### Kickoff Words:
-{hints}
-"""
-    else:
-        text = None
-    return text, None
-
-
-def _format_kickoff_hints(task_output):
-    innocent_word = task_output.get('innocent_word')
-    undercover_word = task_output.get('undercover_word')
-    return f"""\
-- words: {innocent_word}, {undercover_word}
-- players words: {task_output.get('players_words')}"""
-
+    return text, task_output
 
 def _format_router_task(task, task_output, state):
     event = task_output.get("event")
@@ -258,6 +241,7 @@ def select_players_num():
     Function to handle players number selection in Streamlit app.
     If players number is selected, it initializes the game and starts running the graph.
     """
+    global debug_mode
     # Get the selected players number from the session state
     players_num = st.session_state.players_num
     with_human_player = st.session_state.with_human_player
@@ -266,6 +250,13 @@ def select_players_num():
     reorder_players_every = st.session_state.reorder_players_every
     player_agents_connect_with = st.session_state.player_agents_connect_with
     timeout_for_human = st.session_state.timeout_for_human
+    debug_mode = st.session_state.debug_mode
+    
+    # use user's openai api key and base url
+    openai_api_key = st.session_state.openai_api_key
+    openai_base_url = st.session_state.openai_base_url
+    logger.info("User's OpenAI API key: %s", bool(openai_api_key is not None))
+    os_config(openai_api_key=openai_api_key, openai_base_url=openai_base_url)
     
     # TODO: reset, to clear the selection
     # st.session_state.pop("players_num")
@@ -295,7 +286,7 @@ def select_players_num():
             ["The Eiffel Tower", "The Great Wall of China"],
         ] + st.session_state["history_words"]
         game_config.word_pair_examples = history_words
-     
+        
         app_state: AppState = st.session_state["app_state"]
         # NOTE: have to restart it, we support a new app_id for each run
         # so we can serialize the app_state to disk and load it later
@@ -519,7 +510,7 @@ class AppState:
         app_state.is_history = True
         return app_state    
 
-def render_messages():
+def render_messages(debug_mode=False):
     """
     Render the messages in the app state.
     
@@ -544,6 +535,8 @@ def render_messages():
     app_state.reset_loading()
     if app_state.waiting_when_loading:
         st.info(f"waiting for messages...")
+    
+    # TODO: any idea to use st.status here?
     for message in app_state.messages:
         # TODO: it's tricky to process human input, and ensure processing it ONLY ONCE
         # any way to improve it?
@@ -576,8 +569,11 @@ def render_messages():
             st.markdown("**Got an error! Please restart the game.**")
             break
         else:
-            text, json_obj = format_message(player_index, task, task_output, state)
-            render_message(text, json_obj)
+            text, json_obj = format_message(player_index, task, task_output, state, debug_mode=debug_mode)
+            if not text and not json_obj:
+                continue
+            render_message(text, json_obj, debug_mode=debug_mode)
+                
     
 def main():
     """
@@ -590,9 +586,37 @@ def main():
     if "games" not in st.session_state:
         st.session_state["games"] = load_games()
         st.session_state["history_words"] = load_history_words(st.session_state["games"])
+    if "debug_mode" not in st.session_state:
+        debug_mode = False
+    else:
+        debug_mode = st.session_state["debug_mode"]
+    logger.info("UI debug mode: %s", debug_mode)
         
     with st.sidebar:
         st.title("Settings")
+        
+        st.text_input(
+            "OpenAI API key",
+            type="password",
+            key="openai_api_key",
+            placeholder="Paste your OpenAI API key",
+            help="You can get your API key from https://platform.openai.com/account/api-keys"
+        )
+        
+        st.text_input(
+            "OpenAI base URL (optional)",
+            key="openai_base_url",
+            placeholder="Your OpenAI proxy URL if needed",
+        )
+
+        st.divider()
+
+        st.checkbox(
+            "I want to play as the human player",
+            value=False,
+            key="with_human_player",
+            disabled=False
+        )
 
         st.selectbox(
             "Select the number of players to start the game",
@@ -603,22 +627,17 @@ def main():
             placeholder="number of players",
         )
 
-        st.checkbox(
-            "Play game as the human player",
-            value=False,
-            key="with_human_player",
-            disabled=False
-        )
-
-        st.selectbox(
-            "Timeout to answer (seconds)",
-            [60, 120, 300, 10, 5, 3, 1] if DEBUG else [60, 120, 300, 1],
-            index=0,
-            # on_change=select_players_num,
-            key="timeout_for_human"
-        )
+        st.divider()
 
         with st.expander("Advanced settings", expanded=False):
+
+            st.selectbox(
+                "Timeout to answer (seconds)",
+                [60, 120, 300, 10, 5, 3, 1] if debug_mode else [60, 120, 300, 1],
+                index=0,
+                # on_change=select_players_num,
+                key="timeout_for_human"
+            )
 
             st.selectbox(
                 "How to connect the players",
@@ -650,7 +669,11 @@ def main():
                 key="with_rounds_history"
             )
 
-        st.divider()
+            st.checkbox(
+                "Debug mode",
+                value=False,
+                key="debug_mode"
+            )
 
         st.selectbox(
             "Game history",
@@ -661,11 +684,13 @@ def main():
             on_change=select_history_game,
             format_func=lambda x: x.get("name") or x.get("app_id")
         )
+        
+        st.divider()
+        
+        st.markdown(f"Give me a star on [GitHub]({GITHUB_URL})! 🙏")
 
     st.title("Who is the Undercover?")
-    render_messages()
-    # app_state: AppState = st.session_state["app_state"]    
-    # save_game(app_state.app_id, app_state.message_queue)
+    render_messages(debug_mode=debug_mode)
 
 if __name__ == "__main__":
     main()
