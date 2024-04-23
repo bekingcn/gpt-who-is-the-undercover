@@ -126,8 +126,9 @@ Uncertain Player:
 
 PLAYER_VOTING_JSON_FORMAT = """{
     "vote": [the index number of the undercover player], 
-    "reason": "the reason why the player is undercover",
-    "role": "what's yout role, innocent or undercover"}"""
+    "reason": "an short reason why the player is undercover",
+    "role": "what's yout role, innocent or undercover"
+}"""
 
 PROMPT_PLAYER_VOTING = [
     {

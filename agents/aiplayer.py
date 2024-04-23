@@ -63,7 +63,7 @@ Here are the statements before your turn in the current round:
 
 Your word is {word}.
 Your player index is {self.player_index}.
-Make your statement and do not repeat all the previous statements.
+Make your one sentence statement and do not repeat any of the previous statements.
 """
         prompt[1]["content"] = user_prompt
         lc_messages = convert_openai_messages(prompt)
