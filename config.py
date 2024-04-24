@@ -2,6 +2,7 @@ import os
 import logging
 import dotenv
 
+LANGUAGE = "en"
 DEBUG = False
 app_name = "gpt-undercover"
 logger = logging.getLogger(app_name)

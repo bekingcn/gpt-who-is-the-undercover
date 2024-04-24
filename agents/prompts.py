@@ -145,6 +145,16 @@ PROMPT_PLAYER_VOTING = [
     }
 ]
 
+
+INITIAL_WORD_PAIR_EXAMPLES = [
+    ["Ice Cream", "Sorbet"],
+    ["The Eiffel Tower", "The Great Wall of China"],
+    ["Books", "Magazines"],
+    ["Sunflower", "Rose"],
+    ["Beach", "Desert"],
+    ["Lemonade", "Lemonade"],
+]
+
 ## ---------------
 ## Tests
 

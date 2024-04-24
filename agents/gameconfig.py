@@ -8,19 +8,13 @@ REORDER_PLAYERS_EVERY_TASK = "task"
 PLAYER_AGENTS_CONNECT_WITH_CHAIN = "chain"
 PLAYER_AGENTS_CONNECT_WITH_ROUTER = "router"
 
-_init_word_pair_examples = [
-    ["Ice Cream", "Sorbet"],
-    ["The Eiffel Tower", "The Great Wall of China"],
-    ["Books", "Magazines"],
-    ["Sunflower", "Rose"],
-    ["Beach", "Desert"],
-    ["Lemonade", "Lemonade"],
-]
+from .zhprompts import INIT_WORD_PAIR_EXAMPLES
+
 _max_word_pair_examples = 10
 def update_word_pair_examples(new_pairs=[]):
     # at most 10 examples (or excluding 10 history word pairs)
     if len(new_pairs) < _max_word_pair_examples:
-        pairs = new_pairs + _init_word_pair_examples[:_max_word_pair_examples-len(new_pairs)]
+        pairs = new_pairs + INIT_WORD_PAIR_EXAMPLES[:_max_word_pair_examples-len(new_pairs)]
     else:
         pairs = new_pairs[:_max_word_pair_examples]
     return "\n".join([f"{wp[0]} (innocent) and {wp[1]} (undercover)" for wp in pairs])

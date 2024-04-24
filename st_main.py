@@ -13,7 +13,7 @@ from agents.base import ROUTER_EVENT_NAME_GAME_END, ROUTER_EVENT_NAME_ROUND_END,
     PLAYER_INDEX_ROUTER, PLAYER_INDEX_KICKOFF
 
 from agents.gameconfig import GLOBAL_GAME_CONFIG as game_config
-from config import config as os_config, DEBUG, logger
+from config import config as os_config, DEBUG, logger, LANGUAGE
 from utils import MyQueue, Empty
 
 # indicate if we should render it in the UI
@@ -22,6 +22,91 @@ PLAYER_INDEX_UI_NOT_RENDER = -99
 PLAYER_INDEX_UI_RENDER = -98
 GAMES_PATH = "games"
 GITHUB_URL = "https://github.com/bekingcn/gpt-who-is-the-undercover"
+
+UI_GAME_TITLE_EN = "Who is the Undercover?"
+
+UI_GAME_TITLE_ZH = "谁是卧底？"
+
+UI_GAME_OVER_EN = """
+#### Game is Over
+- Result: {final_result}
+- Leftover Players: 
+  - {text_players}
+"""
+
+UI_GAME_OVER_ZH = """
+#### 游戏结束
+- 结果: {final_result}
+- 剩余玩家: 
+  - {text_players}
+"""
+
+UI_STATEMENT_TEMPLATE_EN = """\
+#### Player {player_desc} Statement
+{statement}"""
+
+UI_STATEMENT_TEMPLATE_ZH = """\
+#### 玩家 {player_desc} 陈述
+{statement}"""
+
+UI_VOTE_TEMPLATE_EN = """\
+#### Player {player_desc} Vote
+- Vote to: {vote}
+- Reason: {reason}"""
+
+UI_VOTE_TEMPLATE_ZH = """\
+#### 玩家 {player_desc} 投票
+- 投票给: {vote}
+- 投票原因: {reason}"""
+
+UI_KICKOFF_TEMPLATE_EN = """\
+#### Kickoff Game with {players_num} Players
+**The order of players:**
+{players_with_order}
+
+"""
+
+UI_KICKOFF_TEMPLATE_ZH = """\
+#### 游戏开始，共有 {players_num} 名玩家
+**发言顺序：**
+{players_with_order}
+
+"""
+
+UI_VOTE_RESULT_TEMPLATE_EN = """\
+#### Vote Result:
+- Out of game: {player_name} (id: {player_index})
+- Role: {role}"""
+
+UI_VOTE_RESULT_TEMPLATE_ZH = """\
+#### 投票结果:
+- 出局玩家: {player_name} (id: {player_index})
+- 玩家角色: {role}"""
+
+UI_START_ROUND_TEMPLATE_EN = """\
+#### Round {turn} - Start by order:
+{players_with_order}"""
+
+UI_START_ROUND_TEMPLATE_ZH = """\
+#### 第 {turn} 轮 - 玩家顺序:
+{players_with_order}"""
+
+UI_START_TASK_TEMPLATE_EN = """\
+#### Round {turn} - Stage: {current_task} - Start by order:
+{players_with_order}"""
+
+UI_START_TASK_TEMPLATE_ZH = """\
+#### 第 {turn} 轮 - 当前任务: {current_task} - 玩家顺序:
+{players_with_order}"""
+
+UI_GAME_TITLE = UI_GAME_TITLE_ZH if LANGUAGE == "zh" else UI_GAME_TITLE_EN
+UI_GAME_OVER = UI_GAME_OVER_ZH if LANGUAGE == "zh" else UI_GAME_OVER_EN
+UI_STATEMENT_TEMPLATE = UI_STATEMENT_TEMPLATE_ZH if LANGUAGE == "zh" else UI_STATEMENT_TEMPLATE_EN
+UI_VOTE_TEMPLATE = UI_VOTE_TEMPLATE_ZH if LANGUAGE == "zh" else UI_VOTE_TEMPLATE_EN
+UI_KICKOFF_TEMPLATE = UI_KICKOFF_TEMPLATE_ZH if LANGUAGE == "zh" else UI_KICKOFF_TEMPLATE_EN
+UI_VOTE_RESULT_TEMPLATE = UI_VOTE_RESULT_TEMPLATE_ZH if LANGUAGE == "zh" else UI_VOTE_RESULT_TEMPLATE_EN
+UI_START_ROUND_TEMPLATE = UI_START_ROUND_TEMPLATE_ZH if LANGUAGE == "zh" else UI_START_ROUND_TEMPLATE_EN
+UI_START_TASK_TEMPLATE = UI_START_TASK_TEMPLATE_ZH if LANGUAGE == "zh" else UI_START_TASK_TEMPLATE_EN
 
 def st_callback(st_q):
     def _callback_wrapper(player_index, task, task_output, state):
@@ -87,19 +172,13 @@ def format_message(player_index, task, task_output, state, debug_mode):
     logger.debug(f"MSG_RENDER: {player_index}, {task}, {task_output}")
     raise Exception("Invalid player index or task")
 
-
 def _format_end_task(state):
     # render the result: final result, leftover players, words for each player, etc
     names = [player.name for player in state.players]
     zipped = list(zip(names, state.alive_status, state.players_words))
     zipped.sort(key=lambda x: x[1])
     text_players = "\n  - ".join([f"{name:<15} ({"alive" if alive else "out of game"}, word: {word})" for name, alive, word in zipped])
-    text = f"""
-#### Game is Over
-- Result: {state.final_result}
-- Leftover Players: 
-  - {text_players}
-"""
+    text = UI_GAME_OVER.format(final_result=state.final_result, text_players=text_players)
     json_obj = state.dict()
     return text, json_obj
 
@@ -111,7 +190,7 @@ def _format_agent_task(player_index, task, task_output, state):
     if task == TASK_NAME_STATEMENT:
         text = _format_statement_task(player_desc, task_output)
     elif task == TASK_NAME_VOTE:
-        text = _format_vote_task(player_desc, task_output)
+        text = _format_vote_task(player_desc, task_output, state)
     else:
         text = None
 
@@ -120,29 +199,20 @@ def _format_agent_task(player_index, task, task_output, state):
 
 def _format_statement_task(player_desc, task_output):
     statement = task_output.get('statement')
-    return f"""\
-#### Player {player_desc} Statement
-{statement}"""
+    return UI_STATEMENT_TEMPLATE.format(player_desc=player_desc, statement=statement)
 
 
-def _format_vote_task(player_desc, task_output):
+def _format_vote_task(player_desc, task_output, state):
     vote = task_output.get('vote')
     reason = task_output.get('reason')
-    return f"""\
-#### Player {player_desc} Vote
-- Vote to: {vote}
-- Reason: {reason}"""
+    player_name = state.players[vote].name
+    return UI_VOTE_TEMPLATE.format(player_desc=player_desc, vote=player_name, reason=reason)
 
 
 def _format_kickoff_task(task, task_output, state):
     if task == TASK_NAME_KICKOFF:
         players_with_order = format_players_order(state.players, order=task_output.get('order'))
-        text = f"""\
-#### Kickoff Game with {len(state.players)} Players
-**The order of players:**
-{players_with_order}
-
-"""
+        text = UI_KICKOFF_TEMPLATE.format(players_num=state.players_num, players_with_order=players_with_order)
     return text, task_output
 
 def _format_router_task(task, task_output, state):
@@ -172,24 +242,17 @@ def _format_vote_end_task(task_output, state):
     player_index = task_output.get('player_out_of_game')
     player_name = state.players[player_index].name
     is_human = state.players[player_index].is_human
-    return f"""\
-#### Vote Result:
-- Out of game: {player_name} (id: {player_index})
-- Role: {"**YOU**" if is_human else "AI"}"""
+    return UI_VOTE_RESULT_TEMPLATE.format(player_name=player_name, player_index=player_index, role="**YOU**" if is_human else "AI")
 
 
 def _format_round_start_task(task_output, state):
     players_with_order = format_players_order(state.players, order=task_output.get("players_order", None))
-    return f"""\
-#### Round {state.turn} - Start by order:
-{players_with_order}"""
+    return UI_START_ROUND_TEMPLATE.format(turn=state.turn, players_with_order=players_with_order)
 
 
 def _format_task_start_task(task_output, state):
     players_with_order = format_players_order(state.players, order=task_output.get("players_order", None))
-    return f"""\
-#### Round {state.turn} - Stage: {state.current_task} - Start by order:
-{players_with_order}"""
+    return UI_START_TASK_TEMPLATE.format(turn=state.turn, current_task=state.current_task, players_with_order=players_with_order)
 
 # handle user input
 def on_human_input():
@@ -283,7 +346,8 @@ def select_players_num():
             ["Beach", "Desert"],
             ["Ice Cream", "Sorbet"],
             ["The Eiffel Tower", "The Great Wall of China"],
-        ] + st.session_state["history_words"]
+        ]
+        history_words = st.session_state["history_words"][:2]
         game_config.word_pair_examples = history_words
         
         app_state: AppState = st.session_state["app_state"]
@@ -688,7 +752,7 @@ def main():
         
         st.markdown(f"Give me a star on [GitHub]({GITHUB_URL})! 🙏")
 
-    st.title("Who is the Undercover?")
+    st.title(UI_GAME_TITLE)
     render_messages(debug_mode=debug_mode)
 
 if __name__ == "__main__":

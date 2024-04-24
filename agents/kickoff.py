@@ -2,7 +2,7 @@ import random, json
 from langchain.adapters.openai import convert_openai_messages
 from langchain_openai import ChatOpenAI
 
-from .prompts import PROMPT_KICKOFF, PROMPT_KICKOFF_RULES
+from .zhprompts import PROMPT_KICKOFF, PROMPT_KICKOFF_RULES
 from .base import TASK_NAME_KICKOFF
 from .gameconfig import GLOBAL_GAME_CONFIG as game_config, update_word_pair_examples
 
