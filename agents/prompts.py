@@ -126,7 +126,7 @@ Uncertain Player:
 
 PLAYER_VOTING_JSON_FORMAT = """{
     "vote": [the index number of the undercover player], 
-    "reason": "an short reason why the player is undercover",
+    "reason": "an short reason why the player is undercover without revealing your word directly",
     "role": "what's yout role, innocent or undercover"
 }"""
 
@@ -146,7 +146,7 @@ PROMPT_PLAYER_VOTING = [
 ]
 
 
-INITIAL_WORD_PAIR_EXAMPLES = [
+INIT_WORD_PAIR_EXAMPLES = [
     ["Ice Cream", "Sorbet"],
     ["The Eiffel Tower", "The Great Wall of China"],
     ["Books", "Magazines"],
@@ -154,6 +154,40 @@ INITIAL_WORD_PAIR_EXAMPLES = [
     ["Beach", "Desert"],
     ["Lemonade", "Lemonade"],
 ]
+
+def format_player_statement_prompt(turn, history, word, player_index):
+    user_prompt = f"""
+This is Round {turn}
+Here are the statements before your turn in the current round:
+
+{history}
+
+Your word is {word}.
+Your player index is {player_index}.
+Make your one sentence statement and do not repeat any of the previous statements.
+"""
+    prompt = PROMPT_PLAYER_STATEMENT.copy()
+    prompt[1]["content"] = user_prompt
+    return prompt
+
+def format_player_voting_prompt(turn, history, word, player_index):
+    user_prompt = f"""
+This is Round {turn}
+Here are the statements before your turn in the current round:
+
+{history}
+
+Your word is {word}.
+Your index is {player_index}.
+Make your vote to identify the undercover player's index.
+
+Here is the format of your return:
+{PLAYER_VOTING_JSON_FORMAT}
+Please return nothing but the JSON.
+"""
+    prompt = PROMPT_PLAYER_VOTING.copy()
+    prompt[1]["content"] = user_prompt
+    return prompt
 
 ## ---------------
 ## Tests

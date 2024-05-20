@@ -8,7 +8,11 @@ REORDER_PLAYERS_EVERY_TASK = "task"
 PLAYER_AGENTS_CONNECT_WITH_CHAIN = "chain"
 PLAYER_AGENTS_CONNECT_WITH_ROUTER = "router"
 
-from .zhprompts import INIT_WORD_PAIR_EXAMPLES
+GLOBAL_LANGUAGE = "en"  # zh or en
+if GLOBAL_LANGUAGE == "zh":
+    from .zhprompts import INIT_WORD_PAIR_EXAMPLES
+else:
+    from .prompts import INIT_WORD_PAIR_EXAMPLES
 
 _max_word_pair_examples = 10
 def update_word_pair_examples(new_pairs=[]):
@@ -53,14 +57,3 @@ class GameConfig:
     @property
     def with_human(self) -> bool:
         return self.with_humans>0
-
-GLOBAL_GAME_CONFIG = GameConfig(
-    players_num=3, 
-    with_humans=0, 
-    round_history=False,
-    reorder_players=REORDER_PLAYERS_NOTHING,
-    order_players_by=REORDER_METHOD_SHUFFLE,
-    player_agents_connect_with=PLAYER_AGENTS_CONNECT_WITH_ROUTER,
-    human_input_timeout = 60,
-    word_pair_examples = []
-)

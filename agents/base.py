@@ -18,9 +18,7 @@ The player with the most votes is eliminated, with ties leading to the next roun
 If only three players remain (including the undercover player), the undercover player wins; 
 otherwise, the innocents win.
 """
-from .gameconfig import GLOBAL_GAME_CONFIG
 from .gameconfig import REORDER_METHOD_SHIFT, REORDER_METHOD_SHUFFLE
-from .gameconfig import REORDER_PLAYERS_NOTHING, REORDER_PLAYERS_EVERY_ROUND, REORDER_PLAYERS_EVERY_TASK
 
 TASK_NAME_KICKOFF = "kickoff"
 TASK_NAME_STATEMENT = "statement"
@@ -96,9 +94,9 @@ class GameState(BaseModel):
     next_player_index: int
     
     @classmethod
-    def init_state(cls, players_num: int):        
+    def init_state(cls, players_num: int, order_players_by):        
         order = list(range(players_num))
-        statement_order = cls._create_order(order, type="shuffle")
+        statement_order = cls._create_order(order, type=order_players_by)
         vote_order = statement_order
         discussion_order = statement_order
         human_players = random.sample(range(players_num), 1)
@@ -153,10 +151,9 @@ class GameState(BaseModel):
         return [i[1] for i in sorted_ord1]
 
     @classmethod
-    def _create_order(cls, order: list[int], type=None) -> list[int]:
+    def _create_order(cls, order: list[int], type) -> list[int]:
         # shuffle or shift
-        type = type or GLOBAL_GAME_CONFIG.order_players_by
-        if type == "shuffle":
+        if type == REORDER_METHOD_SHUFFLE:
             new_order = order.copy()
             random.shuffle(new_order)
             return new_order
@@ -251,7 +248,7 @@ class BasePlayerAgent:
 # ==== TESTS =====
 
 def test_orders():
-    data = GameState.init_state(5)
+    data = GameState.init_state(5, "shuffle")
     state = GameState.parse_obj(data)
     orig_order = data["players_order"]
     new_order = state.get_players_order()

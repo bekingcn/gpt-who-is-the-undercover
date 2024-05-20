@@ -2,12 +2,10 @@ from .base import GameState, PlayerData
 from .base import TASK_NAME_END, TASK_NAME_KICKOFF, TASK_NAME_STATEMENT, TASK_NAME_VOTE, PLAYER_INDEX_ROUTER
 from .base import ROUTER_EVENT_NAME_GAME_END, ROUTER_EVENT_NAME_ROUND_END, ROUTER_EVENT_NAME_KICKOFF, ROUTER_EVENT_NAME_STATEMENT_END, ROUTER_EVENT_NAME_VOTE_END
 from .base import FINAL_RESULT_INNOCENT_WIN, FINAL_RESULT_UNDERCOVER_WIN, FINAL_RESULT_QUIT_WRONG_VOTE
-from .base import REORDER_PLAYERS_EVERY_ROUND, REORDER_PLAYERS_EVERY_TASK, REORDER_PLAYERS_NOTHING
+from .gameconfig import REORDER_PLAYERS_EVERY_ROUND, REORDER_PLAYERS_EVERY_TASK, REORDER_PLAYERS_NOTHING
 
 from .aiplayer import AIPlayerAgent
 from .humanplayer import HumanPlayerAgent
-
-from .base import GLOBAL_GAME_CONFIG
 
 class RouterAgent:
     def __init__(self, callback=None):
@@ -157,9 +155,8 @@ class PlayerRouterAgent:
         self.node_name = node_name or "player_router"
         self.callback = callback or self._callback
 
-        overrided_reorder_players = reorder_players or GLOBAL_GAME_CONFIG.reorder_palyers
-        self.reorder_palyers_every_round = overrided_reorder_players == REORDER_PLAYERS_EVERY_ROUND
-        self.reorder_palyers_every_task = overrided_reorder_players == REORDER_PLAYERS_EVERY_TASK
+        self.reorder_palyers_every_round = reorder_players == REORDER_PLAYERS_EVERY_ROUND
+        self.reorder_palyers_every_task = reorder_players == REORDER_PLAYERS_EVERY_TASK
     
     def _callback(self, player_index, task, task_output, state=None):
         print(f"Player Router: {task_output}")

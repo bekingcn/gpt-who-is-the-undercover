@@ -12,8 +12,8 @@ from agents.base import ROUTER_EVENT_NAME_GAME_END, ROUTER_EVENT_NAME_ROUND_END,
     ROUTER_EVENT_NAME_ROUND_START, ROUTER_EVENT_NAME_TASK_START, \
     PLAYER_INDEX_ROUTER, PLAYER_INDEX_KICKOFF
 
-from agents.gameconfig import GLOBAL_GAME_CONFIG as game_config
-from config import config as os_config, DEBUG, logger, LANGUAGE
+from agents.gameconfig import GameConfig, GLOBAL_LANGUAGE as LANGUAGE
+from config import config as os_config, DEBUG, logger       # , LANGUAGE
 from utils import MyQueue, Empty
 
 # indicate if we should render it in the UI
@@ -23,6 +23,8 @@ PLAYER_INDEX_UI_RENDER = -98
 GAMES_PATH = "games"
 GITHUB_URL = "https://github.com/bekingcn/gpt-who-is-the-undercover"
 
+# Game descriptions with languages
+# TODO: move them to a seperated file?
 UI_GAME_TITLE_EN = "Who is the Undercover?"
 
 UI_GAME_TITLE_ZH = "谁是卧底？"
@@ -328,16 +330,16 @@ def select_players_num():
     if players_num:                    
         # Initialize the game graph
         config = RunnableConfig(recursion_limit=120, max_concurrency=1)
-        init_data = GameState.init_state(players_num)
         
         # change settings
-        global game_config
+        game_config = GameConfig()
         game_config.with_humans = 1 if with_human_player else 0
         game_config.round_history = with_rounds_history
         game_config.order_players_by = order_players_by
         game_config.reorder_palyers = reorder_players_every
         game_config.player_agents_connect_with = player_agents_connect_with
         game_config.human_input_timeout = timeout_for_human
+        init_data = GameState.init_state(players_num, game_config.order_players_by)
         # TODO: remove it
         history_words = [
             ["Piano", "Accordion"],
@@ -360,10 +362,9 @@ def select_players_num():
         st_q.clear()
         g = graph(
             init_data, 
+            game_config=game_config,
             callback=st_callback(st_q=st_q),
-            user_callback=st_user_callback(st_q=st_q, st_input_q=st_input_q),
-            with_human=with_human_player, 
-            rounds_history=with_rounds_history
+            user_callback=st_user_callback(st_q=st_q, st_input_q=st_input_q)
         )
         # run as a thread
         def _thread_func():
@@ -613,7 +614,7 @@ def render_messages(debug_mode=False):
             message["player_index"] = PLAYER_INDEX_UI_NOT_RENDER
             # this delay is to synchronize timeout with human agent
             # and force to rerun st if no user input
-            time.sleep(game_config.human_input_timeout + 0.1)
+            time.sleep(st.session_state.timeout_for_human + 0.1)
             st.rerun()
             # continue
         # check if it's a save message

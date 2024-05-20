@@ -1,5 +1,5 @@
 from agents.kickoff import KickoffAgent
-from base import GameState
+from agents.base import GameState
 # test Kickoff
 
 import os

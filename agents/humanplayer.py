@@ -1,12 +1,11 @@
 from .base import BasePlayerAgent
 from .base import GameState
 
-from .base import GLOBAL_GAME_CONFIG
-
 class HumanPlayerAgent(BasePlayerAgent):
-    def __init__(self, player, callback=None, user_callback=None, rounds_history=False):
+    def __init__(self, player, callback=None, user_callback=None, rounds_history=False, human_input_timeout=60):
         super().__init__(player, callback=callback, rounds_history=rounds_history)
         self.user_callback = user_callback or self._user_callback
+        self.human_input_timeout = human_input_timeout
         
     def _user_callback(self, player_index, state: GameState, **kwargs):
         history = kwargs.get("history", [])
@@ -48,7 +47,7 @@ class HumanPlayerAgent(BasePlayerAgent):
         from queue import Empty, Queue
         assert isinstance(q, Queue)
         try:
-            ret = q.get(block=True, timeout=GLOBAL_GAME_CONFIG.human_input_timeout)  # n seconds
+            ret = q.get(block=True, timeout=self.human_input_timeout)  # n seconds
             return ret
         except Empty:
             return timeout_default

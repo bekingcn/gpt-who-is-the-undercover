@@ -100,7 +100,7 @@ PROMPT_PLAYER_VOTING_RULES = """
 
 PLAYER_VOTING_JSON_FORMAT = """{
     "vote": 卧底玩家的number,
-    "reason": "为什么该玩家是卧底的一句话原因（中文）",
+    "reason": "为什么该玩家是卧底的一句话原因（中文）；不要直接说出你的词语。",
     "role": "你是什么角色，平民还是卧底？"
 }"""
 

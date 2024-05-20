@@ -2,9 +2,12 @@ import random, json
 from langchain.adapters.openai import convert_openai_messages
 from langchain_openai import ChatOpenAI
 
-from .zhprompts import PROMPT_KICKOFF, PROMPT_KICKOFF_RULES
 from .base import TASK_NAME_KICKOFF
-from .gameconfig import GLOBAL_GAME_CONFIG as game_config, update_word_pair_examples
+from .gameconfig import GLOBAL_LANGUAGE, update_word_pair_examples
+if GLOBAL_LANGUAGE == "zh":
+    from .zhprompts import PROMPT_KICKOFF, PROMPT_KICKOFF_RULES
+else:
+    from .prompts import PROMPT_KICKOFF, PROMPT_KICKOFF_RULES
 
 model_name = "gpt-3.5-turbo"
 
@@ -15,8 +18,9 @@ model_name = "gpt-3.5-turbo"
 # - provide the order of the players
 # - send a word to each player
 class KickoffAgent:
-    def __init__(self, callback=None):
+    def __init__(self, word_pair_examples=[], callback=None):
         self.callback = callback or self._callback
+        self.word_pair_examples = word_pair_examples
         
     def _callback(self, player_index, task, task_output, state=None):
         print(f"kickoff words: {task_output.get('innocent_word')}, {task_output.get('undercover_word')}")
@@ -58,7 +62,7 @@ class KickoffAgent:
     
     def generate(self):
         # replace the user content here, with the updated word pair examples
-        user_prompt = PROMPT_KICKOFF_RULES.format(word_pair_examples=update_word_pair_examples(game_config.word_pair_examples))
+        user_prompt = PROMPT_KICKOFF_RULES.format(word_pair_examples=update_word_pair_examples(self.word_pair_examples))
         kickoff_prompt = PROMPT_KICKOFF.copy()
         kickoff_prompt[1]["content"] = user_prompt
         lc_messages = convert_openai_messages(kickoff_prompt)
@@ -70,7 +74,7 @@ class KickoffAgent:
 ## test
 
 def test_generate():
-    game_config.word_pair_examples = [
+    word_pair_examples = [
         ["Piano", "Accordion"],
         ["Butterfly", "Moth"],
         ["Books", "Magazines"],
@@ -79,7 +83,7 @@ def test_generate():
         ["The Eiffel Tower", "The Great Wall of China"],
     ]
     
-    kickoff = KickoffAgent()
+    kickoff = KickoffAgent(word_pair_examples=word_pair_examples)
     result = kickoff.generate()
     print(result)
     

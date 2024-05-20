@@ -3,7 +3,12 @@ from langchain.adapters.openai import convert_openai_messages
 from langchain_openai import ChatOpenAI
 from .base import BasePlayerAgent
 from .base import TASK_NAME_KICKOFF, TASK_NAME_STATEMENT, TASK_NAME_VOTE, TASK_NAME_END, TASK_NAME_NEW, GameState
-from .zhprompts import PROMPT_PLAYER_VOTING, PLAYER_VOTING_JSON_FORMAT, PROMPT_PLAYER_STATEMENT, format_player_statement_prompt, format_player_voting_prompt
+from .gameconfig import GLOBAL_LANGUAGE
+
+if GLOBAL_LANGUAGE == "zh":
+    from .zhprompts import format_player_statement_prompt, format_player_voting_prompt
+else:
+    from .prompts import format_player_statement_prompt, format_player_voting_prompt
 
 model_name = "gpt-3.5-turbo"
 # TODO: reset statements and votes without appending

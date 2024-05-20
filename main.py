@@ -5,7 +5,9 @@ from graph import graph
 from agents.base import TASK_NAME_KICKOFF, TASK_NAME_STATEMENT, TASK_NAME_VOTE, GameState
 
 from config import config as os_config, DEBUG, logger
-from agents.gameconfig import GLOBAL_GAME_CONFIG as game_config
+from agents.gameconfig import GameConfig
+
+game_config = GameConfig()
 
 os_config()
 
@@ -135,13 +137,12 @@ def render_final_result(result):
 players_num = input("Please input the number of players: ")
 def main(players_num=None):
     config = RunnableConfig(recursion_limit=120)
-    init_data = GameState.init_state(players_num)
+    init_data = GameState.init_state(players_num, game_config.order_players_by)
     g = graph(
         init_data, 
+        game_config=game_config,
         callback=my_callback, 
-        user_callback=my_user_callback, 
-        with_human=game_config.with_human, 
-        rounds_history=game_config.round_history,
+        user_callback=my_user_callback
     )
     result = g.invoke(init_data, config=config)
     render_final_result(result)

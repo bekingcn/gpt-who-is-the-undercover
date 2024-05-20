@@ -13,7 +13,8 @@ def make_players_chain(
     callback=None, 
     user_callback=None, 
     with_human=False,
-    rounds_history=False
+    rounds_history=False,
+    human_input_timeout=60
     ):
     """
     Generate a chain of player nodes in a workflow based on the given order of players.
@@ -30,7 +31,7 @@ def make_players_chain(
         # TODO: for now, we are always name a human player randomly whatever the with_human setting
         # if this is set, this player will be interactable on the UI
         if with_human and p.is_human:
-            agent = HumanPlayerAgent(p, callback=callback, user_callback=user_callback, rounds_history=rounds_history)
+            agent = HumanPlayerAgent(p, callback=callback, user_callback=user_callback, rounds_history=rounds_history, human_input_timeout=human_input_timeout)
         else:
             agent = AIPlayerAgent(p, callback=callback, rounds_history=rounds_history)
         players.append((p, agent))
@@ -51,16 +52,15 @@ def router_continue(state):
     else:
         return "continue"
 
-from agents.gameconfig import GLOBAL_GAME_CONFIG, PLAYER_AGENTS_CONNECT_WITH_CHAIN, PLAYER_AGENTS_CONNECT_WITH_ROUTER
-def graph(init_data: dict, callback=None, user_callback=None, with_human=None, rounds_history=None):
-    if with_human is None:
-        with_human = GLOBAL_GAME_CONFIG.with_human
-    if rounds_history is None:
-        rounds_history = GLOBAL_GAME_CONFIG.round_history
+from agents.gameconfig import GameConfig, PLAYER_AGENTS_CONNECT_WITH_CHAIN, PLAYER_AGENTS_CONNECT_WITH_ROUTER
+def graph(init_data: dict, game_config:GameConfig=None, callback=None, user_callback=None, with_human=None, rounds_history=None):
+    assert(game_config is not None, "Game Config must be set")
+    with_human = game_config.with_human
+    rounds_history = game_config.round_history
 
     workflow = StateGraph(GameState)
 
-    kickoff = KickoffAgent(callback)
+    kickoff = KickoffAgent(word_pair_examples=game_config.word_pair_examples, callback=callback)
     router = RouterAgent(callback)
 
     # add nodes
@@ -69,10 +69,10 @@ def graph(init_data: dict, callback=None, user_callback=None, with_human=None, r
     order = init_data.get("players_order")
     players = init_data.get("players")
     players_with_order = [players[p] for p in order]
-    if GLOBAL_GAME_CONFIG.player_agents_connect_with == PLAYER_AGENTS_CONNECT_WITH_ROUTER:
+    if game_config.player_agents_connect_with == PLAYER_AGENTS_CONNECT_WITH_ROUTER:
         from agents.router import PlayerRouterAgent
         # the end_node (to router) is added as conditional edge in build_palyer_map
-        player_router = PlayerRouterAgent(end_node="router", callback=callback)
+        player_router = PlayerRouterAgent(end_node="router", reorder_players=game_config.reorder_palyers, callback=callback)
         start_player, _ = player_router.build_routing(
             init_data,
             workflow,
@@ -81,14 +81,15 @@ def graph(init_data: dict, callback=None, user_callback=None, with_human=None, r
             user_callback=user_callback,
             rounds_history=rounds_history,
         )
-    elif GLOBAL_GAME_CONFIG.player_agents_connect_with == PLAYER_AGENTS_CONNECT_WITH_CHAIN:
+    elif game_config.player_agents_connect_with == PLAYER_AGENTS_CONNECT_WITH_CHAIN:
         start_player, end_player = make_players_chain(
             workflow, 
             players_with_order, 
             callback=callback, 
             user_callback=user_callback, 
             with_human=with_human,
-            rounds_history=rounds_history)
+            rounds_history=rounds_history,
+            human_input_timeout=game_config.human_input_timeout)
         workflow.add_edge(end_player, "router")
     else:
         raise NotImplementedError("Invalid player_agents_connect_with configuration")
